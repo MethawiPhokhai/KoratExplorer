@@ -7,12 +7,13 @@ const places=[
  {id:'bung',name:'Bung Ta Lua Park',detail:'Southern landmark',routes:[['11','blue / white','#4d78bd'],['13','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
  {id:'mall',name:'The Mall / Lotus',detail:'Western corridor',routes:[['6','white / red','#e06b58'],['8','white / blue','#4d78bd'],['17','white / purple','#a56ac4']]}
 ];
-const scene=document.querySelector('#scene'), renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(scene.clientWidth,scene.clientHeight); scene.append(renderer.domElement);
+const scene=document.querySelector('#scene'), renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(scene.clientWidth,scene.clientHeight); renderer.domElement.style.position='absolute';renderer.domElement.style.inset='0';renderer.domElement.style.zIndex='2'; scene.append(renderer.domElement);
 const camera=new THREE.PerspectiveCamera(45,scene.clientWidth/scene.clientHeight,.1,1000);camera.position.set(11,11,14);
-const world=new THREE.Scene();world.background=new THREE.Color(0x91c5d7);world.add(new THREE.HemisphereLight(0xffffff,0x49627a,2));
+const world=new THREE.Scene();world.add(new THREE.HemisphereLight(0xffffff,0x49627a,2));
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.target.set(0,0,0);controls.maxPolarAngle=Math.PI/2.15;
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(28,22),new THREE.MeshLambertMaterial({color:0x7fba75}));ground.rotation.x=-Math.PI/2;world.add(ground);
 const roadMat=new THREE.MeshLambertMaterial({color:0x48566b});const road=new THREE.Mesh(new THREE.BoxGeometry(25,.08,2.1),roadMat);road.position.y=.05;world.add(road);const cross=new THREE.Mesh(new THREE.BoxGeometry(2.1,.09,18),roadMat);cross.position.y=.06;world.add(cross);
+ground.visible=false;road.visible=false;cross.visible=false;
 const colors=[0xd9b52b,0xe06b58,0x4d78bd,0xa56ac4,0x55a879]; for(let i=0;i<18;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*1.4,1+Math.random()*3,1+Math.random()*1.4),new THREE.MeshLambertMaterial({color:colors[i%colors.length]}));b.position.set((Math.random()-.5)*24,.5+ b.geometry.parameters.height/2,(Math.random()-.5)*17); if(Math.abs(b.position.x)<2||Math.abs(b.position.z)<2){i--;continue}world.add(b)}
 const landmarkMeshes={}; let selectedId=null;
 function landmark(p,i){const g=new THREE.Group();g.userData={id:p.id};const x=[-7,4,1,-3][i],z=[0,-6,6,4][i];g.position.set(x,0,z);
@@ -31,6 +32,6 @@ const roadMapEl=document.querySelector('#roadMap');
 const roadMap=L.map(roadMapEl,{zoomControl:true}).setView([14.9799,102.0977],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(roadMap);
 const mapModes={three:document.querySelector('#show3d'),roads:document.querySelector('#showRoads')};
-function setMode(mode){const roads=mode==='roads';renderer.domElement.style.display=roads?'none':'block';roadMapEl.style.display=roads?'block':'none';mapModes.three.classList.toggle('active',!roads);mapModes.roads.classList.toggle('active',roads);if(roads)setTimeout(()=>roadMap.invalidateSize(),0)}
+function setMode(mode){const roads=mode==='roads';renderer.domElement.style.display=roads?'none':'block';roadMapEl.style.display='block';mapModes.three.classList.toggle('active',!roads);mapModes.roads.classList.toggle('active',roads);setTimeout(()=>roadMap.invalidateSize(),0)}
 mapModes.three.onclick=()=>setMode('three');mapModes.roads.onclick=()=>setMode('roads');
 addEventListener('resize',()=>{renderer.setSize(scene.clientWidth,scene.clientHeight);camera.aspect=scene.clientWidth/scene.clientHeight;camera.updateProjectionMatrix();if(roadMapEl.style.display!=='none')roadMap.invalidateSize()});(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(world,camera)})();
