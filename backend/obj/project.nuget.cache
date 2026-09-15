@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "dgSpecHash": "jSMc8cmiDBQ=",
+  "success": true,
+  "projectFilePath": "/Users/tuscaffy/Documents/Codex/2026-09-15/new-chat-2/work/KoratExplorer/backend/KoratExplorer.Api.csproj",
+  "expectedPackageFiles": [
+    "/Users/tuscaffy/.nuget/packages/microsoft.netcore.app.ref/8.0.23/microsoft.netcore.app.ref.8.0.23.nupkg.sha512",
+    "/Users/tuscaffy/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.23/microsoft.aspnetcore.app.ref.8.0.23.nupkg.sha512",
+    "/Users/tuscaffy/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.23/microsoft.netcore.app.host.osx-arm64.8.0.23.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1900",
+      "level": "Warning",
+      "message": "Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.",
+      "projectPath": "/Users/tuscaffy/Documents/Codex/2026-09-15/new-chat-2/work/KoratExplorer/backend/KoratExplorer.Api.csproj",
+      "warningLevel": 1,
+      "filePath": "/Users/tuscaffy/Documents/Codex/2026-09-15/new-chat-2/work/KoratExplorer/backend/KoratExplorer.Api.csproj",
+      "targetGraphs": []
+    }
+  ]
+}

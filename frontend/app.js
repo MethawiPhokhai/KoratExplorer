@@ -5,8 +5,10 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 const places=[
  {id:'yamo',name:'Ya Mo Monument',detail:'Old city centre',lat:14.9753,lon:102.0979,routes:[['1','yellow / green','#d9b52b'],['5','white / yellow','#e8c944'],['11','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
  {id:'terminal2',name:'Bus Station 2',detail:'Northern corridor',lat:14.98861586,lon:102.09465374,routes:[['4','white / blue','#4d78bd'],['10','white / red / yellow','#e06b58'],['15','white / purple','#a56ac4'],['19','image-only source route','#b168c9']]},
- {id:'bung',name:'Bung Ta Lua Park',detail:'Southern landmark',lat:14.9484,lon:102.0865,routes:[['11','blue / white','#4d78bd'],['13','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
- {id:'mall',name:'The Mall / Lotus',detail:'Western corridor',lat:14.9862,lon:102.0734,routes:[['6','white / red','#e06b58'],['8','white / blue','#4d78bd'],['17','white / purple','#a56ac4']]}
+ {id:'bung',name:'Bung Ta Lua Park',detail:'Southern landmark',lat:14.96030,lon:102.08838,routes:[['11','blue / white','#4d78bd'],['13','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
+ {id:'mall',name:'The Mall Korat',detail:'Western corridor',lat:14.98034264,lon:102.07680801,routes:[['6','white / red','#e06b58'],['8','white / blue','#4d78bd'],['17','white / purple','#a56ac4']]}
+ ,{id:'lotus',name:'Lotus Korat (Mittraphap)',detail:'Mittraphap Road supermarket',lat:14.9779455,lon:102.0707623,routes:[]}
+ ,{id:'terminal21',name:'Terminal 21 Korat',detail:'Mittraphap Road',lat:14.98200721,lon:102.09027624,routes:[]}
 ];
 // One shared Web Mercator origin for roads, buildings, and landmark anchors.
 // One scene unit is 100 projected metres; altitude is the Three.js Y axis.
@@ -39,11 +41,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,att
 const referenceMarkers={},landmarkMeshes={};let selectedId=null;
 const landmarkScale=.35;
 function landmark(p,i){const g=new THREE.Group();g.userData={id:p.id};const pos=mapPoint(p.lat,p.lon);g.position.set(pos.x,0,pos.z);g.scale.setScalar(landmarkScale);
-  const base=new THREE.Mesh(new THREE.BoxGeometry(2.1,.25,2.1),new THREE.MeshLambertMaterial({color:0xf8c14b}));base.position.y=.15;g.add(base);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(2.1,.25,2.1),new THREE.MeshLambertMaterial({color:0xf8c14b}));base.position.y=.15;if(p.id!=='bung')g.add(base);
   if(p.id==='yamo'){const plinth=new THREE.Mesh(new THREE.CylinderGeometry(.8,.95,.45,8),new THREE.MeshLambertMaterial({color:0xd7b26d}));plinth.position.y=.5;g.add(plinth);const tower=new THREE.Mesh(new THREE.CylinderGeometry(.22,.35,2.3,6),new THREE.MeshLambertMaterial({color:0xf1e2be}));tower.position.y=1.8;g.add(tower);const roof=new THREE.Mesh(new THREE.ConeGeometry(.5,.65,6),new THREE.MeshLambertMaterial({color:0x9b4e35}));roof.position.y=3.25;g.add(roof)}
   if(p.id==='terminal2'){const building=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.8,1.6),new THREE.MeshLambertMaterial({color:0x5d91c8}));building.position.y=1.1;g.add(building);const roof=new THREE.Mesh(new THREE.BoxGeometry(2.7,.2,1.9),new THREE.MeshLambertMaterial({color:0xdde8f4}));roof.position.y=2.1;g.add(roof)}
-  if(p.id==='bung'){const pond=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.05,24),new THREE.MeshLambertMaterial({color:0x58a9c4}));pond.position.y=.3;g.add(pond);for(let n=0;n<3;n++){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,.8,6),new THREE.MeshLambertMaterial({color:0x765333}));trunk.position.set(-.65+n*.65,.7,.3);g.add(trunk);const crown=new THREE.Mesh(new THREE.DodecahedronGeometry(.45),new THREE.MeshLambertMaterial({color:0x4c9d5c}));crown.position.set(-.65+n*.65,1.25,.3);g.add(crown)}}
-  if(p.id==='mall'){const building=new THREE.Mesh(new THREE.BoxGeometry(2.2,3.6,1.8),new THREE.MeshLambertMaterial({color:0xe77a9c}));building.position.y=2;g.add(building);for(let n=0;n<3;n++){const sign=new THREE.Mesh(new THREE.BoxGeometry(1.5,.12,.05),new THREE.MeshLambertMaterial({color:0xffd866}));sign.position.set(0,1+n*.8,.94);g.add(sign)}}
+
+  if(['mall','lotus','terminal21'].includes(p.id)){const building=new THREE.Mesh(new THREE.BoxGeometry(2.2,3.6,1.8),new THREE.MeshLambertMaterial({color:p.id==='lotus'?0x20a897:p.id==='terminal21'?0xe2e6ed:0xe77a9c}));building.position.y=2;g.add(building);for(let n=0;n<3;n++){const sign=new THREE.Mesh(new THREE.BoxGeometry(1.5,.12,.05),new THREE.MeshLambertMaterial({color:0xffd866}));sign.position.set(0,1+n*.8,.94);g.add(sign)}}
   const ring=new THREE.Mesh(new THREE.RingGeometry(1.25,1.42,32),new THREE.MeshBasicMaterial({color:0xffe07a,transparent:true,opacity:.9,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.32;ring.visible=false;g.add(ring);g.userData.ring=ring;world.add(g);landmarkMeshes[p.id]=g;
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=80;
   const ctx=canvas.getContext('2d');ctx.fillStyle='#172033';ctx.fillRect(0,0,512,80);ctx.fillStyle='#ffe07a';ctx.font='bold 30px sans-serif';ctx.textAlign='center';ctx.fillText((i+1)+' · '+p.name,256,51);
@@ -54,22 +56,55 @@ function landmark(p,i){const g=new THREE.Group();g.userData={id:p.id};const pos=
 places.forEach(landmark);
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerStart;
 renderer.domElement.addEventListener('pointerdown',e=>{pointerStart=[e.clientX,e.clientY]});
-renderer.domElement.addEventListener('pointerup',e=>{if(!pointerStart||Math.hypot(e.clientX-pointerStart[0],e.clientY-pointerStart[1])>5)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects([...Object.values(landmarkMeshes),...Object.values(landmarkMeshes).map(g=>g.userData.label)],true)[0];if(hit){let node=hit.object;while(node.parent&&!node.userData.id)node=node.parent;if(node.userData.id)select(node.userData.id)}});
+renderer.domElement.addEventListener('pointerup',e=>{if(!pointerStart||Math.hypot(e.clientX-pointerStart[0],e.clientY-pointerStart[1])>5)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects([...Object.values(landmarkMeshes),...Object.values(landmarkMeshes).map(g=>g.userData.label),...(landmarkMeshes.bung.userData.water||[])],true)[0];if(hit){let node=hit.object;while(node.parent&&!node.userData.id)node=node.parent;if(node.userData.id)select(node.userData.id)}});
 function select(id,focus=true){
   const p=places.find(x=>x.id===id);selectedId=id;
-  Object.entries(landmarkMeshes).forEach(([key,g])=>{g.scale.setScalar(landmarkScale*(key===id?1.18:1));g.userData.ring.visible=key===id;referenceMarkers[key].setStyle({fillColor:key===id?'#ff7a35':'#f8c14b',radius:key===id?11:8})});
+  Object.entries(landmarkMeshes).forEach(([key,g])=>{g.scale.setScalar(landmarkScale*(key===id?1.18:1));g.userData.ring.visible=key===id;if(g.userData.water)g.userData.water.forEach(m=>m.material.color.setHex(key===id?0x249cc3:0x69bdd2));referenceMarkers[key].setStyle({fillColor:key===id?'#ff7a35':'#f8c14b',radius:key===id?11:8})});
   document.querySelectorAll('.place').forEach(x=>x.classList.toggle('active',x.dataset.id===id));
-  document.querySelector('#routes').innerHTML='<h2>'+p.name+'</h2><p>'+p.detail+' · historical demo</p><p class="hint">Approximate map anchor: '+p.lat.toFixed(5)+', '+p.lon.toFixed(5)+'. Model size is illustrative.</p>'+p.routes.map(r=>'<div class="route"><b>สาย '+r[0]+'</b><span class="swatch" style="background:'+r[2]+'"></span><span>'+r[1]+'</span></div>').join('')+'<p class="hint">Approximate historical association; direction and current service not verified.</p>';
-  if(focus){const pos=mapPoint(p.lat,p.lon);controls.target.set(pos.x,0,pos.z);camera.position.set(pos.x+7,14,pos.z+16);roadMap.setView([p.lat,p.lon],16);}
+  document.querySelector('#routes').innerHTML='<h2>'+p.name+'</h2><p>'+p.detail+' · historical demo</p><p class="hint">Approximate map anchor: '+p.lat.toFixed(5)+', '+p.lon.toFixed(5)+'. Model size is illustrative.</p>'+(p.routes.length?'':'<p>Bus routes not yet verified for this place.</p>')+p.routes.map(r=>'<div class="route"><b>สาย '+r[0]+'</b><span class="swatch" style="background:'+r[2]+'"></span><span>'+r[1]+'</span></div>').join('')+'<p class="hint">Approximate historical association; direction and current service not verified.</p>';
+  if(focus){const pos=mapPoint(p.lat,p.lon);controls.target.set(pos.x,0,pos.z);camera.position.set(pos.x+7,id==='bung'?22:14,pos.z+(id==='bung'?26:16));roadMap.setView([p.lat,p.lon],16);}
 }
 document.querySelector('#places').innerHTML=places.map((p,i)=>'<button class="place" data-id="'+p.id+'"><b>'+(i+1)+' · '+p.name+'</b><br><small>'+p.detail+'</small></button>').join('');
 document.querySelectorAll('.place').forEach(x=>x.onclick=()=>select(x.dataset.id));select('yamo',false);
 const mapModes={three:document.querySelector('#show3d'),roads:document.querySelector('#showRoads')};
+let routeLayer=null,route3d=null;
+function drawRoute(route){
+  if(routeLayer)roadMap.removeLayer(routeLayer); if(route3d)world.remove(route3d);
+  const geometry=route.geometry.map(point=>Array.isArray(point)?point:[point.lat,point.lon]);
+  routeLayer=L.polyline(geometry,{color:'#e3aa2b',weight:6,opacity:.95}).addTo(roadMap).bindTooltip('สาย '+route.number+' · '+route.colors);
+  const points=geometry.map(([lat,lon])=>{const p=mapPoint(lat,lon);return new THREE.Vector3(p.x,.2,p.z)});
+  route3d=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xf8c14b,linewidth:4}));world.add(route3d);
+  document.querySelector('#routes').innerHTML='<h2>สาย '+route.number+'</h2><p><b>'+route.colors+'</b> · '+route.evidence+'</p><p>'+route.stops.join(' → ')+'</p><p class="hint">เส้นทางอ้างอิงตามจุดจาก API และเป็นข้อมูลประวัติศาสตร์ ยังไม่ยืนยันบริการปัจจุบัน</p>';
+  roadMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
+}
+async function loadRoutes(){
+  let data;try{const response=await fetch('http://localhost:5080/api/routes');if(!response.ok)throw new Error();data=await response.json()}catch{data=await (await fetch('./route-data.json')).json()}
+  document.querySelector('#places').innerHTML=data.map(r=>'<button class="place" data-route="'+r.number+'"><b>สาย '+r.number+'</b><br><small>'+r.colors+'</small></button>').join('');
+  document.querySelectorAll('[data-route]').forEach(button=>button.onclick=()=>drawRoute(data.find(r=>r.number===button.dataset.route)));
+  drawRoute(data[0]);
+}
 function setMode(mode){const roads=mode==='roads';renderer.domElement.style.display=roads?'none':'block';roadMapEl.style.display=roads?'block':'none';mapModes.three.classList.toggle('active',!roads);mapModes.roads.classList.toggle('active',roads);mapModes.three.setAttribute('aria-pressed',String(!roads));mapModes.roads.setAttribute('aria-pressed',String(roads));if(roads)roadMap.invalidateSize()}
 mapModes.three.onclick=()=>setMode('three');mapModes.roads.onclick=()=>setMode('roads');setMode('three');
 const overview=document.createElement('button');overview.textContent='Overview';document.querySelector('#mapMode').append(overview);overview.onclick=()=>{controls.target.set(0,0,0);camera.position.set(0,77,65);roadMap.fitBounds([[14.94,102.06],[15.02,102.12]])};
 
+async function loadLake(){
+  const response=await fetch('./bung-lake.json');if(!response.ok)throw new Error('Lake boundary could not be loaded');
+  const lake=await response.json(),g=landmarkMeshes.bung;
+  const outer=lake.members.filter(m=>m.role==='outer'),inner=lake.members.filter(m=>m.role==='inner');
+  const vector=p=>{const v=mapPoint(p.lat,p.lon);return new THREE.Vector2(v.x,-v.z)};
+  g.userData.water=[];
+  outer.forEach((ring,i)=>{
+    const shape=new THREE.Shape(ring.geometry.map(vector));
+    const holes=inner.filter(h=>THREE.ShapeUtils.area(ring.geometry.map(vector))!==0&&pointInside(h.geometry[0],ring.geometry));
+    holes.forEach(h=>shape.holes.push(new THREE.Path(h.geometry.map(vector))));
+    const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshBasicMaterial({color:0x69bdd2,side:THREE.DoubleSide}));
+    mesh.rotation.x=-Math.PI/2;mesh.position.y=.025;mesh.userData.id='bung';world.add(mesh);g.userData.water.push(mesh);
+    L.polygon([ring.geometry,...holes.map(h=>h.geometry)].map(r=>r.map(p=>[p.lat,p.lon])),{color:'#249cc3',fillColor:'#69bdd2',fillOpacity:.7,weight:2}).addTo(roadMap).bindTooltip('Bung Ta Lua Park').on('click',()=>select('bung'));
+  });
+}
+function pointInside(p,ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if((a.lat>p.lat)!==(b.lat>p.lat)&&p.lon<(b.lon-a.lon)*(p.lat-a.lat)/(b.lat-a.lat)+a.lon)inside=!inside}return inside}
 async function loadGeography(){
+  await loadLake();
   const response=await fetch('./korat-osm.json');if(!response.ok)throw new Error('Road data could not be loaded ('+response.status+')');
   const data=await response.json();
   if(!Array.isArray(data.elements))throw new Error('Road data format is invalid');
@@ -104,5 +139,6 @@ async function loadGeography(){
   status.textContent=roadCount.toLocaleString()+' real road ways · '+buildingCount.toLocaleString()+' building footprints · N ↑';
 }
 loadGeography().catch(error=>{status.textContent=error.message;status.dataset.error='true';console.error(error)});
+loadRoutes().catch(error=>console.error(error));
 addEventListener('resize',()=>{renderer.setSize(scene.clientWidth,scene.clientHeight);camera.aspect=scene.clientWidth/scene.clientHeight;camera.updateProjectionMatrix();if(roadMapEl.style.display!=='none')roadMap.invalidateSize()});
 (function loop(){requestAnimationFrame(loop);controls.update();renderer.render(world,camera)})();
