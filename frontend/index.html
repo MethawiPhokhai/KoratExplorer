@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Korat Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header><strong>KORAT EXPLORER</strong><span>Historical voxel demo · routes are approximate</span></header>
+  <main>
+    <section id="scene" aria-label="Interactive 3D map"></section>
+    <aside>
+      <h1>Explore famous places</h1>
+      <p class="hint">Drag to rotate · scroll or pinch to zoom · tap a place</p>
+      <div id="places"></div>
+      <div id="routes" class="card"><h2>Select a place</h2><p>Choose a landmark to see the historical songthaew routes nearby.</p></div>
+      <small>Map data: © OpenStreetMap contributors · <a href="https://opendatacommons.org/licenses/odbl/" target="_blank">ODbL</a></small>
+    </aside>
+  </main>
+  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
