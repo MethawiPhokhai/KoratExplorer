@@ -67,13 +67,19 @@ function select(id,focus=true){
 document.querySelector('#places').innerHTML=places.map((p,i)=>'<button class="place" data-id="'+p.id+'"><b>'+(i+1)+' · '+p.name+'</b><br><small>'+p.detail+'</small></button>').join('');
 document.querySelectorAll('.place').forEach(x=>x.onclick=()=>select(x.dataset.id));select('yamo',false);
 const mapModes={three:document.querySelector('#show3d'),roads:document.querySelector('#showRoads')};
-let routeLayer=null,route3d=null;
+let routeLayer=null,route3d=null,roadPaths=[],geographyReady;
+function snapToRoad([lat,lon]){
+  let best=[lat,lon],distance=Infinity;
+  for(const path of roadPaths)for(const point of path){const d=(point.lat-lat)**2+(point.lon-lon)**2;if(d<distance){distance=d;best=[point.lat,point.lon]}}
+  return best;
+}
 function drawRoute(route){
   if(routeLayer)roadMap.removeLayer(routeLayer); if(route3d)world.remove(route3d);
-  const geometry=route.geometry.map(point=>Array.isArray(point)?point:[point.lat,point.lon]);
+  const geometry=route.geometry.map(point=>snapToRoad(Array.isArray(point)?point:[point.lat,point.lon]));
   const routeBase=L.polyline(geometry,{color:'#2f8b55',weight:8,opacity:.95});
   const routeStripe=L.polyline(geometry,{color:'#f2d342',weight:4,opacity:1});
-  routeLayer=L.layerGroup([routeBase,routeStripe]).addTo(roadMap).bindTooltip('สาย '+route.number+' · '+route.colors);
+  const stopMarkers=geometry.map(([lat,lon],index)=>L.circleMarker([lat,lon],{radius:5,color:'#172033',weight:2,fillColor:'#f2d342',fillOpacity:1}).bindTooltip((index+1)+'. '+route.stops[index]));
+  routeLayer=L.layerGroup([routeBase,routeStripe,...stopMarkers]).addTo(roadMap);
   const points=geometry.map(([lat,lon])=>{const p=mapPoint(lat,lon);return new THREE.Vector3(p.x,.2,p.z)});
   route3d=new THREE.Group();
   route3d.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0x2f8b55})),new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xf2d342})));
@@ -82,6 +88,7 @@ function drawRoute(route){
   roadMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
 }
 async function loadRoutes(){
+  await geographyReady;
   let data;try{const response=await fetch('http://localhost:5080/api/routes');if(!response.ok)throw new Error();data=await response.json()}catch{data=await (await fetch('./route-data.json')).json()}
   document.querySelector('#places').innerHTML=data.map(r=>'<button class="place" data-route="'+r.number+'"><b>สาย '+r.number+'</b><br><small>'+r.colors+'</small></button>').join('');
   document.querySelectorAll('[data-route]').forEach(button=>button.onclick=()=>drawRoute(data.find(r=>r.number===button.dataset.route)));
@@ -118,6 +125,7 @@ async function loadGeography(){
     if(way.type!=='way'||!way.geometry||way.geometry.length<2)continue;
     const tags=way.tags||{},points=way.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(points.length!==way.geometry.length)continue;
     if(tags.highway){
+      roadPaths.push(points);
       const width=(widths[tags.highway.replace(/_link$/,'')]||5)/metresPerUnit;
       for(let i=1;i<points.length;i++){
         const a=mapPoint(points[i-1].lat,points[i-1].lon),b=mapPoint(points[i].lat,points[i].lon),dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz);if(!length)continue;
@@ -142,7 +150,8 @@ async function loadGeography(){
   scene.dataset.roads=roadCount;scene.dataset.buildings=buildingCount;scene.dataset.alignment='passed';
   status.textContent=roadCount.toLocaleString()+' real road ways · '+buildingCount.toLocaleString()+' building footprints · N ↑';
 }
-loadGeography().catch(error=>{status.textContent=error.message;status.dataset.error='true';console.error(error)});
+geographyReady=loadGeography();
+geographyReady.catch(error=>{status.textContent=error.message;status.dataset.error='true';console.error(error)});
 loadRoutes().catch(error=>console.error(error));
 addEventListener('resize',()=>{renderer.setSize(scene.clientWidth,scene.clientHeight);camera.aspect=scene.clientWidth/scene.clientHeight;camera.updateProjectionMatrix();if(roadMapEl.style.display!=='none')roadMap.invalidateSize()});
 (function loop(){requestAnimationFrame(loop);controls.update();renderer.render(world,camera)})();
