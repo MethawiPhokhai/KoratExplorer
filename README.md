@@ -13,7 +13,7 @@ GitHub Issues is the canonical planning tracker:
 - [Review a mobile-friendly voxel map interaction](https://github.com/MethawiPhokhai/KoratExplorer/issues/5)
 - [Build and verify the connected starter and HTML blueprint](https://github.com/MethawiPhokhai/KoratExplorer/issues/6)
 
-The plan contains the confirmed scope. Its five child issues carry native blocking relationships. All remain open and unassigned; no investigation has been resolved.
+The plan contains the confirmed scope. Its five child issues carry native blocking relationships. See the issues for current progress and assignment. Research findings: [Historical map coverage and usable route data](historical-map-research.md).
 
 ## Intended deliverables
 
