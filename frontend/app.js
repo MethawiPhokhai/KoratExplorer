@@ -71,9 +71,13 @@ let routeLayer=null,route3d=null;
 function drawRoute(route){
   if(routeLayer)roadMap.removeLayer(routeLayer); if(route3d)world.remove(route3d);
   const geometry=route.geometry.map(point=>Array.isArray(point)?point:[point.lat,point.lon]);
-  routeLayer=L.polyline(geometry,{color:'#e3aa2b',weight:6,opacity:.95}).addTo(roadMap).bindTooltip('สาย '+route.number+' · '+route.colors);
+  const routeBase=L.polyline(geometry,{color:'#2f8b55',weight:8,opacity:.95});
+  const routeStripe=L.polyline(geometry,{color:'#f2d342',weight:4,opacity:1});
+  routeLayer=L.layerGroup([routeBase,routeStripe]).addTo(roadMap).bindTooltip('สาย '+route.number+' · '+route.colors);
   const points=geometry.map(([lat,lon])=>{const p=mapPoint(lat,lon);return new THREE.Vector3(p.x,.2,p.z)});
-  route3d=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xf8c14b,linewidth:4}));world.add(route3d);
+  route3d=new THREE.Group();
+  route3d.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0x2f8b55})),new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xf2d342})));
+  world.add(route3d);
   document.querySelector('#routes').innerHTML='<h2>สาย '+route.number+'</h2><p><b>'+route.colors+'</b> · '+route.evidence+'</p><p>'+route.stops.join(' → ')+'</p><p class="hint">เส้นทางอ้างอิงตามจุดจาก API และเป็นข้อมูลประวัติศาสตร์ ยังไม่ยืนยันบริการปัจจุบัน</p>';
   roadMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
 }
