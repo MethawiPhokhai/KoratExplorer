@@ -4,7 +4,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 const places=[
  {id:'yamo',name:'Ya Mo Monument',detail:'Old city centre',lat:14.9753,lon:102.0979,routes:[['1','yellow / green','#d9b52b'],['5','white / yellow','#e8c944'],['11','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
- {id:'terminal2',name:'Terminal 2',detail:'Northern corridor',lat:14.98861586,lon:102.09465374,routes:[['4','white / blue','#4d78bd'],['10','white / red / yellow','#e06b58'],['15','white / purple','#a56ac4'],['19','image-only source route','#b168c9']]},
+ {id:'terminal2',name:'Bus Station 2',detail:'Northern corridor',lat:14.98861586,lon:102.09465374,routes:[['4','white / blue','#4d78bd'],['10','white / red / yellow','#e06b58'],['15','white / purple','#a56ac4'],['19','image-only source route','#b168c9']]},
  {id:'bung',name:'Bung Ta Lua Park',detail:'Southern landmark',lat:14.9484,lon:102.0865,routes:[['11','blue / white','#4d78bd'],['13','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
  {id:'mall',name:'The Mall / Lotus',detail:'Western corridor',lat:14.9862,lon:102.0734,routes:[['6','white / red','#e06b58'],['8','white / blue','#4d78bd'],['17','white / purple','#a56ac4']]}
 ];
@@ -21,6 +21,14 @@ const world=new THREE.Scene();world.background=new THREE.Color(0xb9d2df);world.a
 const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-20,50,25);world.add(sun);
 const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.15;controls.minDistance=3;controls.maxDistance=160;
 const southWest=mapPoint(14.94,102.06),northEast=mapPoint(15.02,102.12);
+renderer.localClippingEnabled=true;
+// Clip the full road surface, including its width, exactly at the ground edges.
+const roadBoundary=[
+  new THREE.Plane(new THREE.Vector3(1,0,0),-southWest.x),
+  new THREE.Plane(new THREE.Vector3(-1,0,0),northEast.x),
+  new THREE.Plane(new THREE.Vector3(0,0,1),-northEast.z),
+  new THREE.Plane(new THREE.Vector3(0,0,-1),southWest.z)
+];
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(northEast.x-southWest.x,southWest.z-northEast.z),new THREE.MeshLambertMaterial({color:0xe4e1d5}));
 ground.rotation.x=-Math.PI/2;ground.position.set((southWest.x+northEast.x)/2,-.015,(southWest.z+northEast.z)/2);world.add(ground);
 const status=document.createElement('div');status.id='mapStatus';status.setAttribute('role','status');status.textContent='Loading real roads…';scene.append(status);
@@ -88,7 +96,7 @@ async function loadGeography(){
   }
   if(!roadCount)throw new Error('No roads were found in the local map data');
   const roads=new THREE.BufferGeometry();roads.setAttribute('position',new THREE.Float32BufferAttribute(roadVertices,3));roads.computeVertexNormals();
-  world.add(new THREE.Mesh(roads,new THREE.MeshLambertMaterial({color:0x48576b,side:THREE.DoubleSide})));
+  world.add(new THREE.Mesh(roads,new THREE.MeshLambertMaterial({color:0x48576b,side:THREE.DoubleSide,clippingPlanes:roadBoundary})));
   if(buildingGeometries.length){const buildings=mergeGeometries(buildingGeometries);world.add(new THREE.Mesh(buildings,new THREE.MeshLambertMaterial({color:0xb5b9ac})));buildingGeometries.forEach(g=>g.dispose())}
   // Check all landmark anchors against the same projection used by the reference map.
   for(const p of places){const v=landmarkMeshes[p.id].position,ref=referenceMarkers[p.id].getLatLng(),projected=L.CRS.EPSG3857.project(ref);if(Math.abs(v.x*metresPerUnit+origin.x-projected.x)>.000001||Math.abs(-v.z*metresPerUnit+origin.y-projected.y)>.000001)throw new Error('Landmark projection mismatch: '+p.id)}
