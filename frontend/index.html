@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Korat Explorer</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
   <header><strong>KORAT EXPLORER</strong><span>Historical voxel demo · routes are approximate</span></header>
   <main>
-    <section id="scene" aria-label="Interactive 3D map"></section>
+    <section id="scene" aria-label="Interactive 3D map"><div id="roadMap" aria-label="Real road map"></div><div id="mapMode"><button id="show3d" class="active">3D landmarks</button><button id="showRoads">Real roads</button></div></section>
     <aside>
       <h1>Explore famous places</h1>
       <p class="hint">Drag to rotate · scroll or pinch to zoom · tap a place</p>
@@ -18,6 +19,7 @@
       <small>Map data: © OpenStreetMap contributors · <a href="https://opendatacommons.org/licenses/odbl/" target="_blank">ODbL</a></small>
     </aside>
   </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
   <script type="module" src="app.js"></script>
 </body>
