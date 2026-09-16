@@ -5,9 +5,9 @@ Run the first voxel map slice:
     cd frontend
     python3 -m http.server 8080
 
-Open http://localhost:8080. It uses Three.js from a public CDN, so an internet connection is required for the first prototype. The scene contains four famous-place anchors, stylized blocks, route lookup cards, touch/mouse camera controls, and historical-data warnings.
+Open http://localhost:8080. It uses Three.js from a public CDN, so an internet connection is required for the first prototype. The scene contains famous-place anchors, OSM roads and building footprints, route lookup cards, touch/mouse camera controls, and historical-data warnings.
 
-This is intentionally a small visual slice. It does not claim current bus service and does not include the backend yet.
+This is a historical route prototype. It does not claim current bus service.
 
 ## Route API slice
 
@@ -21,4 +21,16 @@ Endpoints:
     GET /api/routes/1
     GET /api/health
 
-The first route is stored in `backend/data/routes.json`; no database is used. The frontend tries the API first and falls back to `frontend/route-data.json` for the static prototype. Route 1 displays its stops and draws its saved latitude/longitude path over the real road layer. Stops and geometry are historical/approximate until each point is surveyed against road data.
+The first route is stored in `backend/data/routes.json`; no database is used. The API rereads that file on every request and sends `Cache-Control: no-store`. Keep the API running on port 5080 while viewing the frontend on port 8080. The frontend shows a retry message if the API is unavailable; there is no second fallback dataset.
+
+Route 1 follows the user's red annotation using connected OSM road edges through Suranarai, the old city, Pho Klang, Muk Montri and Suebsiri. The northeast extension follows the annotation, not an independently verified bus terminus. This is a historical corridor reconstruction; road direction restrictions and current service have not been confirmed. Named places are independent of geometry vertices. Four uncertain places have null coordinates instead of invented markers.
+
+Regenerate and check the data:
+
+    python3 tools/build-route1.py
+    python3 tools/check-route1.py
+    node --check frontend/app.js
+    dotnet build backend/KoratExplorer.Api.csproj
+    node backend/tests/api.mjs backend/bin/Debug/net8.0/KoratExplorer.Api.dll
+
+`tools/route1-stops.json` records place coordinates and evidence. `backend/data/route1-provenance.json` records the screenshot calibration and OSM edge IDs. The check verifies every rendered segment is a real connected road edge, and that the path remains within the annotated corridor. The API test verifies edits are returned without restarting.

@@ -5,23 +5,28 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 var app = builder.Build();
 app.UseCors();
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.CacheControl = "no-store";
+    await next(context);
+});
 
 var dataPath = Path.Combine(app.Environment.ContentRootPath, "data", "routes.json");
-var routes = JsonSerializer.Deserialize<List<BusRoute>>(await File.ReadAllTextAsync(dataPath),
-    new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
 
-app.MapGet("/api/routes", () => Results.Ok(routes.Select(ToResponse)));
-app.MapGet("/api/routes/{number}", (string number) =>
+app.MapGet("/api/routes", async (CancellationToken cancellationToken) =>
+    Results.Ok(await ReadRoutes(dataPath, cancellationToken)));
+app.MapGet("/api/routes/{number}", async (string number, CancellationToken cancellationToken) =>
 {
-    var route = routes.FirstOrDefault(x => x.Number.Equals(number, StringComparison.OrdinalIgnoreCase));
-    return route is null ? Results.NotFound(new { message = "Route was not found." }) : Results.Ok(ToResponse(route));
+    var routes = await ReadRoutes(dataPath, cancellationToken);
+    var route = routes.EnumerateArray().FirstOrDefault(x =>
+        string.Equals(x.GetProperty("number").GetString(), number, StringComparison.OrdinalIgnoreCase));
+    return route.ValueKind == JsonValueKind.Undefined
+        ? Results.NotFound(new { message = "Route was not found." })
+        : Results.Ok(route);
 });
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.Run();
 
-static RouteResponse ToResponse(BusRoute route) => new(route.Number, route.Colors, route.Evidence,
-    route.Stops, route.Geometry.Select(x => new Coordinate(x[0], x[1])).ToList());
-
-record BusRoute(string Number, string Colors, string Evidence, List<string> Stops, List<double[]> Geometry);
-record RouteResponse(string Number, string Colors, string Evidence, List<string> Stops, List<Coordinate> Geometry);
-record Coordinate(double Lat, double Lon);
+// Read the editable source on every request so map corrections need no API restart.
+static async Task<JsonElement> ReadRoutes(string path, CancellationToken cancellationToken) =>
+    JsonSerializer.Deserialize<JsonElement>(await File.ReadAllTextAsync(path, cancellationToken));

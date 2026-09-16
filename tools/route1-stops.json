@@ -1,0 +1,16 @@
+[
+  {"name":"30 กันยา","lat":14.9901101,"lon":102.118119,"evidence":"OSM node 357877518: road junction, historical terminus unconfirmed"},
+  {"name":"เทคโนฯ ราชมงคล","lat":14.9860736,"lon":102.1191012,"evidence":"OSM campus way 1482948084; campus centre, not a bus-stop survey"},
+  {"name":"ราชภัฏ","lat":14.9841909,"lon":102.1152523,"evidence":"OSM campus way 1464319567; campus centre, not a bus-stop survey"},
+  {"name":"ประตูน้ำ","lat":14.9800,"lon":102.1077,"evidence":"Municipality: Suranarai / Route 224 junction"},
+  {"name":"วัดบูรพ์","lat":14.97501,"lon":102.11132,"evidence":"Approximate temple location on Chomphon; route entrance unconfirmed"},
+  {"name":"หลักเมือง","lat":14.9749942,"lon":102.1060061,"evidence":"OSM shrine way 549397530"},
+  {"name":"คลังใหม่","lat":null,"lon":null,"evidence":"Klang Plaza Jomsurang, Chomsurangyat Road; coordinate and historical detour unconfirmed"},
+  {"name":"อนุสาวรีย์ย่าโม","lat":14.9747299,"lon":102.0981171,"evidence":"OSM monument way 549315244"},
+  {"name":"ตลาดแม่กิมเฮง","lat":14.9757789,"lon":102.0957242,"evidence":"OSM market way 551793193; market centre"},
+  {"name":"แยกเต๊กฮะ","lat":14.9747855,"lon":102.0906992,"evidence":"OSM node 356278729: Pho Klang / Yotha junction"},
+  {"name":"การไฟฟ้า","lat":null,"lon":null,"evidence":"Historical office at 2 Muk Montri Road; exact coordinate unconfirmed"},
+  {"name":"หัวรถไฟ","lat":14.9724742,"lon":102.0788944,"evidence":"OSM station building way 556491671; reference building, actual boarding point unconfirmed"},
+  {"name":"ชลประทาน","lat":null,"lon":null,"evidence":"Office 8 / Suebsiri corridor; exact coordinate unconfirmed"},
+  {"name":"สุรนารีวิลเลจ","lat":null,"lon":null,"evidence":"Historical destination name; exact coordinate unconfirmed"}
+]

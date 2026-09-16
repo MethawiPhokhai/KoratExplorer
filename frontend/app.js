@@ -3,7 +3,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 const places=[
- {id:'yamo',name:'Ya Mo Monument',detail:'Old city centre',lat:14.9753,lon:102.0979,routes:[['1','yellow / green','#d9b52b'],['5','white / yellow','#e8c944'],['11','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
+ {id:'yamo',name:'Ya Mo Monument',detail:'Old city centre',lat:14.9747299,lon:102.0981171,routes:[['1','yellow / green','#d9b52b'],['5','white / yellow','#e8c944'],['11','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
  {id:'terminal2',name:'Bus Station 2',detail:'Northern corridor',lat:14.98861586,lon:102.09465374,routes:[['4','white / blue','#4d78bd'],['10','white / red / yellow','#e06b58'],['15','white / purple','#a56ac4'],['19','image-only source route','#b168c9']]},
  {id:'bung',name:'Bung Ta Lua Park',detail:'Southern landmark',lat:14.96030,lon:102.08838,routes:[['11','blue / white','#4d78bd'],['13','blue / white','#4d78bd'],['20','white / blue','#4d78bd']]},
  {id:'mall',name:'The Mall Korat',detail:'Western corridor',lat:14.98034264,lon:102.07680801,routes:[['6','white / red','#e06b58'],['8','white / blue','#4d78bd'],['17','white / purple','#a56ac4']]}
@@ -21,8 +21,9 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(scene.clie
 const camera=new THREE.PerspectiveCamera(45,scene.clientWidth/scene.clientHeight,.05,1000);camera.position.set(0,77,65);
 const world=new THREE.Scene();world.background=new THREE.Color(0xb9d2df);world.add(new THREE.HemisphereLight(0xffffff,0x667278,2));
 const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-20,50,25);world.add(sun);
-const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.15;controls.minDistance=3;controls.maxDistance=160;
-const southWest=mapPoint(14.94,102.06),northEast=mapPoint(15.02,102.12);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.15;controls.minDistance=3;controls.maxDistance=300;
+const mapBounds=[[14.94,102.06],[15.025,102.15]];
+const southWest=mapPoint(...mapBounds[0]),northEast=mapPoint(...mapBounds[1]);
 renderer.localClippingEnabled=true;
 // Clip the full road surface, including its width, exactly at the ground edges.
 const roadBoundary=[
@@ -38,6 +39,7 @@ const roadMapEl=document.querySelector('#roadMap');
 const roadMap=L.map(roadMapEl,{zoomControl:false,preferCanvas:true}).setView([mapCenter.lat,mapCenter.lon],14);
 L.control.zoom({position:'bottomright'}).addTo(roadMap);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(roadMap);
+roadMap.createPane('busRoute').style.zIndex='450';
 const referenceMarkers={},landmarkMeshes={};let selectedId=null;
 const landmarkScale=.35;
 function landmark(p,i){const g=new THREE.Group();g.userData={id:p.id};const pos=mapPoint(p.lat,p.lon);g.position.set(pos.x,0,pos.z);g.scale.setScalar(landmarkScale);
@@ -64,39 +66,79 @@ function select(id,focus=true){
   document.querySelector('#routes').innerHTML='<h2>'+p.name+'</h2><p>'+p.detail+' · historical demo</p><p class="hint">Approximate map anchor: '+p.lat.toFixed(5)+', '+p.lon.toFixed(5)+'. Model size is illustrative.</p>'+(p.routes.length?'':'<p>Bus routes not yet verified for this place.</p>')+p.routes.map(r=>'<div class="route"><b>สาย '+r[0]+'</b><span class="swatch" style="background:'+r[2]+'"></span><span>'+r[1]+'</span></div>').join('')+'<p class="hint">Approximate historical association; direction and current service not verified.</p>';
   if(focus){const pos=mapPoint(p.lat,p.lon);controls.target.set(pos.x,0,pos.z);camera.position.set(pos.x+7,id==='bung'?22:14,pos.z+(id==='bung'?26:16));roadMap.setView([p.lat,p.lon],16);}
 }
-document.querySelector('#places').innerHTML=places.map((p,i)=>'<button class="place" data-id="'+p.id+'"><b>'+(i+1)+' · '+p.name+'</b><br><small>'+p.detail+'</small></button>').join('');
-document.querySelectorAll('.place').forEach(x=>x.onclick=()=>select(x.dataset.id));select('yamo',false);
 const mapModes={three:document.querySelector('#show3d'),roads:document.querySelector('#showRoads')};
-let routeLayer=null,route3d=null,roadPaths=[],geographyReady;
-function snapToRoad([lat,lon]){
-  let best=[lat,lon],distance=Infinity;
-  for(const path of roadPaths)for(const point of path){const d=(point.lat-lat)**2+(point.lon-lon)**2;if(d<distance){distance=d;best=[point.lat,point.lon]}}
-  return best;
+let routeLayer=null,route3d=null,selectedRoute=null;
+function clearRoute(){
+  if(routeLayer){roadMap.removeLayer(routeLayer);routeLayer=null}
+  if(route3d){
+    world.remove(route3d);
+    route3d.traverse(object=>{object.geometry?.dispose();if(object.material){for(const material of Array.isArray(object.material)?object.material:[object.material])material.dispose()}});
+    route3d=null;
+  }
+  selectedRoute=null;delete scene.dataset.routeRevision;delete scene.dataset.routePoints;
 }
+function routeRibbon(points,width,height,color){
+  const vertices=[];
+  for(let i=1;i<points.length;i++){
+    const a=points[i-1],b=points[i],dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz);if(!length)continue;
+    const nx=-dz/length*width/2,nz=dx/length*width/2;
+    vertices.push(a.x+nx,height,a.z+nz,b.x+nx,height,b.z+nz,b.x-nx,height,b.z-nz,a.x+nx,height,a.z+nz,b.x-nx,height,b.z-nz,a.x-nx,height,a.z-nz);
+  }
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  return new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,clippingPlanes:roadBoundary}));
+}
+function fitRoute(){
+  if(!selectedRoute)return;
+  const bounds=new THREE.Box3().setFromPoints(selectedRoute.geometry.map(([lat,lon])=>{const p=mapPoint(lat,lon);return new THREE.Vector3(p.x,0,p.z)}));
+  const center=bounds.getCenter(new THREE.Vector3()),radius=bounds.getSize(new THREE.Vector3()).length()/2;
+  const verticalFov=THREE.MathUtils.degToRad(camera.fov),horizontalFov=2*Math.atan(Math.tan(verticalFov/2)*camera.aspect);
+  const distance=Math.max(10,radius/Math.sin(Math.min(verticalFov,horizontalFov)/2)*1.12);
+  controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(0,.86,.52).normalize().multiplyScalar(distance));controls.update();
+  if(roadMapEl.offsetWidth)roadMap.fitBounds(routeLayer.getBounds(),{padding:[30,30],maxZoom:16});
+}
+function routeText(tag,text){const node=document.createElement(tag);node.textContent=text;return node}
+function hasCoordinates(stop){return Number.isFinite(stop.lat)&&Number.isFinite(stop.lon)}
 function drawRoute(route){
-  if(routeLayer)roadMap.removeLayer(routeLayer); if(route3d)world.remove(route3d);
-  const geometry=route.geometry.map(point=>snapToRoad(Array.isArray(point)?point:[point.lat,point.lon]));
-  const routeBase=L.polyline(geometry,{color:'#2f8b55',weight:8,opacity:.95});
-  const routeStripe=L.polyline(geometry,{color:'#f2d342',weight:4,opacity:1});
-  const stopMarkers=geometry.map(([lat,lon],index)=>L.circleMarker([lat,lon],{radius:5,color:'#172033',weight:2,fillColor:'#f2d342',fillOpacity:1}).bindTooltip((index+1)+'. '+route.stops[index]));
-  routeLayer=L.layerGroup([routeBase,routeStripe,...stopMarkers]).addTo(roadMap);
-  const points=geometry.map(([lat,lon])=>{const p=mapPoint(lat,lon);return new THREE.Vector3(p.x,.2,p.z)});
-  route3d=new THREE.Group();
-  route3d.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0x2f8b55})),new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xf2d342})));
-  world.add(route3d);
-  document.querySelector('#routes').innerHTML='<h2>สาย '+route.number+'</h2><p><b>'+route.colors+'</b> · '+route.evidence+'</p><p>'+route.stops.join(' → ')+'</p><p class="hint">เส้นทางอ้างอิงตามจุดจาก API และเป็นข้อมูลประวัติศาสตร์ ยังไม่ยืนยันบริการปัจจุบัน</p>';
-  roadMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
+  clearRoute();selectedRoute=route;selectedId=null;
+  const routeBase=L.polyline(route.geometry,{pane:'busRoute',color:'#2f8b55',weight:9,opacity:1,interactive:false});
+  const routeStripe=L.polyline(route.geometry,{pane:'busRoute',color:'#f2d342',weight:4,opacity:1,interactive:false});
+  const stopMarkers=route.stops.flatMap((stop,index)=>hasCoordinates(stop)?[L.circleMarker([stop.lat,stop.lon],{pane:'busRoute',radius:5,color:'#172033',weight:2,fillColor:'#f2d342',fillOpacity:1}).bindTooltip(document.createTextNode((index+1)+'. '+stop.name))]:[]);
+  routeLayer=L.featureGroup([routeBase,routeStripe,...stopMarkers]).addTo(roadMap);
+  const points=route.geometry.map(([lat,lon])=>mapPoint(lat,lon));
+  route3d=new THREE.Group();route3d.add(routeRibbon(points,.35,.07,0x2f8b55),routeRibbon(points,.16,.075,0xf2d342));
+  route.stops.forEach(stop=>{
+    if(!hasCoordinates(stop))return;
+    // ponytail: these fixed boxes mark referenced places; detailed models can replace them after survey.
+    const position=mapPoint(stop.lat,stop.lon),marker=new THREE.Mesh(new THREE.BoxGeometry(.18,.3,.18),new THREE.MeshLambertMaterial({color:0xf2d342,clippingPlanes:roadBoundary}));
+    marker.position.set(position.x,.15,position.z);route3d.add(marker);
+  });
+  world.add(route3d);scene.dataset.routeRevision=route.revision;scene.dataset.routePoints=route.geometry.length;
+  const details=document.querySelector('#routes'),revision=routeText('p','Revision: '+route.revision),stops=document.createElement('ol');revision.className='hint';revision.dataset.routeRevision=route.revision;
+  route.stops.forEach(stop=>{const item=routeText('li',stop.name+(hasCoordinates(stop)?'':' — ยังไม่ยืนยันพิกัด'));stops.append(item)});
+  details.replaceChildren(routeText('h2','สาย '+route.number),routeText('p',route.colors+' · แนวอ้างอิงตามภาพ'),revision,stops);
+  if(route.notes)details.append(routeText('p',Array.isArray(route.notes)?route.notes.join(' '):route.notes));
+  const notice=routeText('p','เส้นทางประวัติศาสตร์ตามภาพอ้างอิง ยังไม่ยืนยันบริการปัจจุบัน');notice.className='hint';details.append(notice);
+  document.querySelectorAll('[data-route]').forEach(button=>{const active=button.dataset.route===String(route.number);button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active))});fitRoute();
 }
 async function loadRoutes(){
-  await geographyReady;
-  let data;try{const response=await fetch('http://localhost:5080/api/routes');if(!response.ok)throw new Error();data=await response.json()}catch{data=await (await fetch('./route-data.json')).json()}
-  document.querySelector('#places').innerHTML=data.map(r=>'<button class="place" data-route="'+r.number+'"><b>สาย '+r.number+'</b><br><small>'+r.colors+'</small></button>').join('');
-  document.querySelectorAll('[data-route]').forEach(button=>button.onclick=()=>drawRoute(data.find(r=>r.number===button.dataset.route)));
-  drawRoute(data[0]);
+  const buttons=document.querySelector('#places'),details=document.querySelector('#routes');
+  buttons.textContent='กำลังโหลดสายรถจาก API…';
+  try{
+    const response=await fetch('http://127.0.0.1:5080/api/routes',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    const coordinate=p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Math.abs(p[0])<=90&&Number.isFinite(p[1])&&Math.abs(p[1])<=180;
+    if(!Array.isArray(data)||!data.length||data.some(route=>!route.number||typeof route.revision!=='string'||typeof route.colors!=='string'||typeof route.evidence!=='string'||!Array.isArray(route.geometry)||route.geometry.length<2||!route.geometry.every(coordinate)||!Array.isArray(route.stops)||!route.stops.length||!route.stops.every(stop=>stop&&typeof stop.name==='string'&&((stop.lat==null&&stop.lon==null)||coordinate([stop.lat,stop.lon])))))throw new Error('ข้อมูลเส้นทางจาก API ไม่ครบหรือรูปแบบไม่ถูกต้อง');
+    buttons.replaceChildren(...data.map(route=>{const button=routeText('button','สาย '+route.number+' · '+route.colors);button.className='place';button.dataset.route=String(route.number);button.onclick=()=>drawRoute(route);return button}));
+    drawRoute(data[0]);
+  }catch(error){
+    clearRoute();buttons.replaceChildren();details.replaceChildren(routeText('h2','โหลดสายรถไม่สำเร็จ'),routeText('p','เชื่อมต่อ Route API ที่ 127.0.0.1:5080 ไม่สำเร็จ: '+error.message));details.setAttribute('role','alert');
+    const retry=routeText('button','ลองโหลดอีกครั้ง');retry.className='place';retry.onclick=()=>{details.removeAttribute('role');loadRoutes()};buttons.append(retry);
+  }
 }
-function setMode(mode){const roads=mode==='roads';renderer.domElement.style.display=roads?'none':'block';roadMapEl.style.display=roads?'block':'none';mapModes.three.classList.toggle('active',!roads);mapModes.roads.classList.toggle('active',roads);mapModes.three.setAttribute('aria-pressed',String(!roads));mapModes.roads.setAttribute('aria-pressed',String(roads));if(roads)roadMap.invalidateSize()}
+function setMode(mode){const roads=mode==='roads';renderer.domElement.style.display=roads?'none':'block';roadMapEl.style.display=roads?'block':'none';mapModes.three.classList.toggle('active',!roads);mapModes.roads.classList.toggle('active',roads);mapModes.three.setAttribute('aria-pressed',String(!roads));mapModes.roads.setAttribute('aria-pressed',String(roads));if(roads){roadMap.invalidateSize();if(selectedId){const p=places.find(place=>place.id===selectedId);roadMap.setView([p.lat,p.lon],16)}else roadMap.fitBounds(routeLayer?routeLayer.getBounds():mapBounds,{padding:[30,30],maxZoom:16})}}
 mapModes.three.onclick=()=>setMode('three');mapModes.roads.onclick=()=>setMode('roads');setMode('three');
-const overview=document.createElement('button');overview.textContent='Overview';document.querySelector('#mapMode').append(overview);overview.onclick=()=>{controls.target.set(0,0,0);camera.position.set(0,77,65);roadMap.fitBounds([[14.94,102.06],[15.02,102.12]])};
+const overview=document.createElement('button');overview.textContent='Overview';document.querySelector('#mapMode').append(overview);overview.onclick=()=>{controls.target.copy(ground.position);camera.position.set(ground.position.x,105,ground.position.z+90);if(roadMapEl.offsetWidth)roadMap.fitBounds(mapBounds)};
 
 async function loadLake(){
   const response=await fetch('./bung-lake.json');if(!response.ok)throw new Error('Lake boundary could not be loaded');
@@ -125,7 +167,6 @@ async function loadGeography(){
     if(way.type!=='way'||!way.geometry||way.geometry.length<2)continue;
     const tags=way.tags||{},points=way.geometry.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(points.length!==way.geometry.length)continue;
     if(tags.highway){
-      roadPaths.push(points);
       const width=(widths[tags.highway.replace(/_link$/,'')]||5)/metresPerUnit;
       for(let i=1;i<points.length;i++){
         const a=mapPoint(points[i-1].lat,points[i-1].lon),b=mapPoint(points[i].lat,points[i].lon),dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz);if(!length)continue;
@@ -150,8 +191,7 @@ async function loadGeography(){
   scene.dataset.roads=roadCount;scene.dataset.buildings=buildingCount;scene.dataset.alignment='passed';
   status.textContent=roadCount.toLocaleString()+' real road ways · '+buildingCount.toLocaleString()+' building footprints · N ↑';
 }
-geographyReady=loadGeography();
-geographyReady.catch(error=>{status.textContent=error.message;status.dataset.error='true';console.error(error)});
-loadRoutes().catch(error=>console.error(error));
+loadGeography().catch(error=>{status.textContent=error.message;status.dataset.error='true';console.error(error)});
+loadRoutes();
 addEventListener('resize',()=>{renderer.setSize(scene.clientWidth,scene.clientHeight);camera.aspect=scene.clientWidth/scene.clientHeight;camera.updateProjectionMatrix();if(roadMapEl.style.display!=='none')roadMap.invalidateSize()});
 (function loop(){requestAnimationFrame(loop);controls.update();renderer.render(world,camera)})();
