@@ -4,23 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Korat Explorer</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=real-roads-only-v1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
-  <header><strong>KORAT EXPLORER</strong><span>Historical voxel demo · routes are approximate</span></header>
+  <header><strong>KORAT EXPLORER</strong><span>Historical real-road demo · routes are approximate</span></header>
   <main>
-    <section id="scene" aria-label="Interactive 3D map"><div id="roadMap" aria-label="Real road map"></div><div id="mapMode"><button id="show3d" class="active">3D landmarks</button><button id="showRoads">Real roads</button></div></section>
+    <section id="scene" aria-label="Real road map"><div id="roadMap" aria-label="Real road map"></div></section>
     <aside>
       <h1>Songthaew routes</h1>
-      <p class="hint">Choose a bus number · drag to rotate · tap a landmark</p>
+      <p class="hint">คลิกถนนจริงเพื่อดูสายรถที่ผ่าน หรือเลือกหมายเลขรถ</p>
       <div id="places"></div>
-      <div id="routes" class="card"><h2>Select a place</h2><p>Choose a landmark to see the historical songthaew routes nearby.</p></div>
+      <div id="routes" class="card"><h2>เลือกจุดบนถนน</h2><p>คลิกบนแผนที่เพื่อดูสายรถที่ผ่านจุดนั้น</p></div>
       <small>Map data: © OpenStreetMap contributors · <a href="https://opendatacommons.org/licenses/odbl/" target="_blank">ODbL</a></small>
     </aside>
   </main>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
-  <script type="module" src="app.js?v=route1-red-osm-v2"></script>
+  <script type="module" src="app.js?v=real-roads-only-v2"></script>
 </body>
 </html>

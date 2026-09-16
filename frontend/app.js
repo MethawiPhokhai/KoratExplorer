@@ -56,7 +56,7 @@ function landmark(p,i){const g=new THREE.Group();g.userData={id:p.id};const pos=
   referenceMarkers[p.id]=L.circleMarker([p.lat,p.lon],{radius:8,color:'#172033',weight:2,fillColor:'#f8c14b',fillOpacity:1}).addTo(roadMap).bindTooltip((i+1)+' · '+p.name+' (approximate)',{permanent:true,direction:'top'}).on('click',()=>select(p.id));
 
 }
-places.forEach(landmark);
+// 3D landmarks are intentionally disabled; the product surface is the real-road map.
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerStart;
 renderer.domElement.addEventListener('pointerdown',e=>{pointerStart=[e.clientX,e.clientY]});
 renderer.domElement.addEventListener('pointerup',e=>{if(!pointerStart||Math.hypot(e.clientX-pointerStart[0],e.clientY-pointerStart[1])>5)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects([...Object.values(landmarkMeshes),...Object.values(landmarkMeshes).map(g=>g.userData.label),...(landmarkMeshes.bung.userData.water||[])],true)[0];if(hit){let node=hit.object;while(node.parent&&!node.userData.id)node=node.parent;if(node.userData.id)select(node.userData.id)}});
@@ -67,7 +67,6 @@ function select(id,focus=true){
   document.querySelector('#routes').innerHTML='<h2>'+p.name+'</h2><p>'+p.detail+' · historical demo</p><p class="hint">Approximate map anchor: '+p.lat.toFixed(5)+', '+p.lon.toFixed(5)+'. Model size is illustrative.</p>'+(p.routes.length?'':'<p>Bus routes not yet verified for this place.</p>')+p.routes.map(r=>'<div class="route"><b>สาย '+r[0]+'</b><span class="swatch" style="background:'+r[2]+'"></span><span>'+r[1]+'</span></div>').join('')+'<p class="hint">Approximate historical association; direction and current service not verified.</p>';
   if(focus){const pos=mapPoint(p.lat,p.lon);controls.target.set(pos.x,0,pos.z);camera.position.set(pos.x+7,id==='bung'?22:14,pos.z+(id==='bung'?26:16));roadMap.setView([p.lat,p.lon],16);}
 }
-const mapModes={three:document.querySelector('#show3d'),roads:document.querySelector('#showRoads')};
 let routeLayer=null,route3d=null,selectedRoute=null;
 function distanceToSegmentMeters(point,a,b){
   const scale=111320, cos=Math.cos(point.lat*Math.PI/180);
@@ -170,12 +169,11 @@ async function loadRoutes(){
     const retry=routeText('button','ลองโหลดอีกครั้ง');retry.className='place';retry.onclick=()=>{details.removeAttribute('role');loadRoutes()};buttons.append(retry);
   }
 }
-function setMode(mode){const roads=mode==='roads';renderer.domElement.style.display=roads?'none':'block';roadMapEl.style.display=roads?'block':'none';mapModes.three.classList.toggle('active',!roads);mapModes.roads.classList.toggle('active',roads);mapModes.three.setAttribute('aria-pressed',String(!roads));mapModes.roads.setAttribute('aria-pressed',String(roads));if(roads){roadMap.invalidateSize();if(selectedId){const p=places.find(place=>place.id===selectedId);roadMap.setView([p.lat,p.lon],16)}else roadMap.fitBounds(routeLayer?routeLayer.getBounds():mapBounds,{padding:[30,30],maxZoom:16})}}
-mapModes.three.onclick=()=>setMode('three');mapModes.roads.onclick=()=>setMode('roads');setMode('three');
-const overview=document.createElement('button');overview.textContent='Overview';document.querySelector('#mapMode').append(overview);overview.onclick=()=>{controls.target.copy(ground.position);camera.position.set(ground.position.x,105,ground.position.z+90);if(roadMapEl.offsetWidth)roadMap.fitBounds(mapBounds)};
+roadMap.invalidateSize();roadMap.fitBounds(mapBounds,{padding:[30,30],maxZoom:16});
 
 async function loadLake(){
-  const response=await fetch('./bung-lake.json');if(!response.ok)throw new Error('Lake boundary could not be loaded');
+  return;
+  const response=await fetch('./bung-lake.json');if(!response.ok)return;
   const lake=await response.json(),g=landmarkMeshes.bung;
   const outer=lake.members.filter(m=>m.role==='outer'),inner=lake.members.filter(m=>m.role==='inner');
   const vector=p=>{const v=mapPoint(p.lat,p.lon);return new THREE.Vector2(v.x,-v.z)};
@@ -220,12 +218,10 @@ async function loadGeography(){
   const roads=new THREE.BufferGeometry();roads.setAttribute('position',new THREE.Float32BufferAttribute(roadVertices,3));roads.computeVertexNormals();
   world.add(new THREE.Mesh(roads,new THREE.MeshLambertMaterial({color:0x48576b,side:THREE.DoubleSide,clippingPlanes:roadBoundary})));
   if(buildingGeometries.length){const buildings=mergeGeometries(buildingGeometries);world.add(new THREE.Mesh(buildings,new THREE.MeshLambertMaterial({color:0xb5b9ac})));buildingGeometries.forEach(g=>g.dispose())}
-  // Check all landmark anchors against the same projection used by the reference map.
-  for(const p of places){const v=landmarkMeshes[p.id].position,ref=referenceMarkers[p.id].getLatLng(),projected=L.CRS.EPSG3857.project(ref);if(Math.abs(v.x*metresPerUnit+origin.x-projected.x)>.000001||Math.abs(-v.z*metresPerUnit+origin.y-projected.y)>.000001)throw new Error('Landmark projection mismatch: '+p.id)}
   scene.dataset.roads=roadCount;scene.dataset.buildings=buildingCount;scene.dataset.alignment='passed';
-  status.textContent=roadCount.toLocaleString()+' real road ways · '+buildingCount.toLocaleString()+' building footprints · N ↑';
+  status.textContent=roadCount.toLocaleString()+' real road ways · N ↑';
 }
 loadGeography().catch(error=>{status.textContent=error.message;status.dataset.error='true';console.error(error)});
 loadRoutes();
-addEventListener('resize',()=>{renderer.setSize(scene.clientWidth,scene.clientHeight);camera.aspect=scene.clientWidth/scene.clientHeight;camera.updateProjectionMatrix();if(roadMapEl.style.display!=='none')roadMap.invalidateSize()});
+addEventListener('resize',()=>roadMap.invalidateSize());
 (function loop(){requestAnimationFrame(loop);controls.update();renderer.render(world,camera)})();

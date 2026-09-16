@@ -1,11 +1,11 @@
 # Korat Explorer
 
-Run the first voxel map slice:
+Run the real-road map slice:
 
     cd frontend
     python3 -m http.server 8080
 
-Open http://localhost:8080. It uses Three.js from a public CDN, so an internet connection is required for the first prototype. The scene contains famous-place anchors, OSM roads and building footprints, route lookup cards, touch/mouse camera controls, and historical-data warnings.
+Open http://localhost:8080. The prototype uses an OpenStreetMap road view and an internet connection for map tiles. Click a real road to see matching songthaew routes; 3D landmark mode has been removed from the product surface.
 
 This is a historical route prototype. It does not claim current bus service.
 
