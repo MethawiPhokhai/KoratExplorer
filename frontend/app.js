@@ -89,14 +89,13 @@ function showMapPointRoutes(latlng){
   const details=document.querySelector('#routes');
   const heading=routeText('h2','สายรถที่ผ่านจุดนี้');
   const location=routeText('p','พิกัด '+latlng.lat.toFixed(5)+', '+latlng.lng.toFixed(5));location.className='hint';
-  if(!matches.length){details.replaceChildren(heading,location,routeText('p','ยังไม่พบสายรถในข้อมูลภายในระยะ 180 เมตร'));return}
+  if(!matches.length){clearRoute();details.replaceChildren(heading,location,routeText('p','ยังไม่พบสายรถในข้อมูลภายในระยะ 180 เมตร'));return}
   const list=document.createElement('div');
   matches.forEach(({route,distance})=>{
     const row=document.createElement('button');row.className='place active';row.type='button';row.textContent='สาย '+route.number+' · '+route.colors+' ('+Math.round(distance)+' ม.)';row.onclick=()=>drawRoute(route);list.append(row);
   });
-  details.replaceChildren(heading,location,list,routeText('p','ระยะวัดจากเส้นทางถนนที่บันทึกไว้ใน API')); 
+  details.replaceChildren(heading,location,list,routeText('p','ระยะวัดจากเส้นทางถนนที่บันทึกไว้ใน API'));
 }
-roadMap.on('click',event=>showMapPointRoutes(event.latlng));
 // Keep point picking reliable when a rendered road or tile consumes Leaflet's click.
 roadMapEl.addEventListener('click',event=>{
   if(event.target.closest('.leaflet-control,.leaflet-marker-icon,.leaflet-tooltip'))return;
