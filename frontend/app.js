@@ -41,6 +41,7 @@ L.control.zoom({position:'bottomright'}).addTo(roadMap);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(roadMap);
 roadMap.createPane('busRoute').style.zIndex='450';
 const referenceMarkers={},landmarkMeshes={};let selectedId=null;
+let loadedRoutes=[],mapPickMarker=null;
 const landmarkScale=.35;
 function landmark(p,i){const g=new THREE.Group();g.userData={id:p.id};const pos=mapPoint(p.lat,p.lon);g.position.set(pos.x,0,pos.z);g.scale.setScalar(landmarkScale);
   const base=new THREE.Mesh(new THREE.BoxGeometry(2.1,.25,2.1),new THREE.MeshLambertMaterial({color:0xf8c14b}));base.position.y=.15;if(p.id!=='bung')g.add(base);
@@ -68,6 +69,39 @@ function select(id,focus=true){
 }
 const mapModes={three:document.querySelector('#show3d'),roads:document.querySelector('#showRoads')};
 let routeLayer=null,route3d=null,selectedRoute=null;
+function distanceToSegmentMeters(point,a,b){
+  const scale=111320, cos=Math.cos(point.lat*Math.PI/180);
+  const px=(point.lng-a.lng)*scale*cos,py=(point.lat-a.lat)*scale;
+  const bx=(b.lng-a.lng)*scale*cos,by=(b.lat-a.lat)*scale;
+  const length=bx*bx+by*by;if(!length)return Math.hypot(px,py);
+  const t=Math.max(0,Math.min(1,(px*bx+py*by)/length));
+  return Math.hypot(px-t*bx,py-t*by);
+}
+function distanceToRouteMeters(latlng,route){
+  let nearest=Infinity;
+  for(let i=1;i<route.geometry.length;i++)nearest=Math.min(nearest,distanceToSegmentMeters(latlng,L.latLng(route.geometry[i-1][0],route.geometry[i-1][1]),L.latLng(route.geometry[i][0],route.geometry[i][1])));
+  return nearest;
+}
+function showMapPointRoutes(latlng){
+  if(mapPickMarker)roadMap.removeLayer(mapPickMarker);
+  mapPickMarker=L.circleMarker(latlng,{pane:'busRoute',radius:7,color:'#172033',weight:3,fillColor:'#ff7a35',fillOpacity:1}).addTo(roadMap).bindTooltip('จุดที่เลือก',{permanent:true,direction:'top'});
+  const matches=loadedRoutes.map(route=>({route,distance:distanceToRouteMeters(latlng,route)})).filter(x=>x.distance<=180).sort((a,b)=>a.distance-b.distance);
+  const details=document.querySelector('#routes');
+  const heading=routeText('h2','สายรถที่ผ่านจุดนี้');
+  const location=routeText('p','พิกัด '+latlng.lat.toFixed(5)+', '+latlng.lng.toFixed(5));location.className='hint';
+  if(!matches.length){details.replaceChildren(heading,location,routeText('p','ยังไม่พบสายรถในข้อมูลภายในระยะ 180 เมตร'));return}
+  const list=document.createElement('div');
+  matches.forEach(({route,distance})=>{
+    const row=document.createElement('button');row.className='place active';row.type='button';row.textContent='สาย '+route.number+' · '+route.colors+' ('+Math.round(distance)+' ม.)';row.onclick=()=>drawRoute(route);list.append(row);
+  });
+  details.replaceChildren(heading,location,list,routeText('p','ระยะวัดจากเส้นทางถนนที่บันทึกไว้ใน API')); 
+}
+roadMap.on('click',event=>showMapPointRoutes(event.latlng));
+// Keep point picking reliable when a rendered road or tile consumes Leaflet's click.
+roadMapEl.addEventListener('click',event=>{
+  if(event.target.closest('.leaflet-control,.leaflet-marker-icon,.leaflet-tooltip'))return;
+  showMapPointRoutes(roadMap.mouseEventToLatLng(event));
+},true);
 function clearRoute(){
   if(routeLayer){roadMap.removeLayer(routeLayer);routeLayer=null}
   if(route3d){
@@ -129,6 +163,7 @@ async function loadRoutes(){
     const data=await response.json();
     const coordinate=p=>Array.isArray(p)&&p.length===2&&Number.isFinite(p[0])&&Math.abs(p[0])<=90&&Number.isFinite(p[1])&&Math.abs(p[1])<=180;
     if(!Array.isArray(data)||!data.length||data.some(route=>!route.number||typeof route.revision!=='string'||typeof route.colors!=='string'||typeof route.evidence!=='string'||!Array.isArray(route.geometry)||route.geometry.length<2||!route.geometry.every(coordinate)||!Array.isArray(route.stops)||!route.stops.length||!route.stops.every(stop=>stop&&typeof stop.name==='string'&&((stop.lat==null&&stop.lon==null)||coordinate([stop.lat,stop.lon])))))throw new Error('ข้อมูลเส้นทางจาก API ไม่ครบหรือรูปแบบไม่ถูกต้อง');
+    loadedRoutes=data;
     buttons.replaceChildren(...data.map(route=>{const button=routeText('button','สาย '+route.number+' · '+route.colors);button.className='place';button.dataset.route=String(route.number);button.onclick=()=>drawRoute(route);return button}));
     drawRoute(data[0]);
   }catch(error){
