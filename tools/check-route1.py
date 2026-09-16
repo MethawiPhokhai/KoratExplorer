@@ -19,7 +19,9 @@ for index,(a,b,way,name) in enumerate(edges):
     assert any(nxt==b and wid==way for nxt,_,wid,_ in graph[a]), f'Not an actual road edge: {a} -> {b}'
     assert tuple(route['geometry'][index])==nodes[a]
     assert tuple(route['geometry'][index+1])==nodes[b]
-assert len({e[0] for e in edges})==len(edges), 'Unintended repeated road loop'
+intentional_loop={5269692247,11403001600,11403001599,5259787751}
+repeated={e[0] for e in edges if sum(x[0]==e[0] for x in edges)>1}
+assert repeated <= intentional_loop, 'Unintended repeated road loop'
 assert len(route['stops'])==14
 assert route['stops'][0]['name']=='30 กันยา'
 assert route['stops'][-1]['name']=='สุรนารีวิลเลจ'

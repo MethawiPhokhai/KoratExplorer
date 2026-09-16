@@ -109,14 +109,26 @@ def main():
         else:
             simple.append(edge);visited[edge[1]]=len(simple)
     edges=simple
+    # The selected red road south of Ya Mo is a short connected loop from
+    # Chomphon. Keep it in the route so the rendered line reaches that road.
+    branch=[(5269692247,11403001600,43342620,'ถนนวัชรสฤทธิ์'),
+            (11403001600,11403001599,43342620,'ถนนวัชรสฤทธิ์'),
+            (11403001599,5259787751,43342620,'ถนนวัชรสฤทธิ์'),
+            (5259787751,11403001599,43342620,'ถนนวัชรสฤทธิ์'),
+            (11403001599,11403001600,43342620,'ถนนวัชรสฤทธิ์'),
+            (11403001600,5269692247,43342620,'ถนนวัชรสฤทธิ์')]
+    for i,edge in enumerate(edges):
+        if edge[:2]==(5269692247,5441998455):
+            edges[i:i]=branch
+            break
     geometry=[nodes[edges[0][0]]]+[nodes[e[1]] for e in edges]
     report={'source':'User red annotation Screenshot 2569-09-16 at 01.33.59.png',
             'controls':CONTROL,'tracePixels':TRACE,'anchorNodes':anchors,
             'osmEdges':edges,'calibrationMaxErrorPixels':max(math.dist(geo_pixel(lat,lon),(x,y)) for x,y,lat,lon in CONTROL)}
     (ROOT/'backend/data/route1-provenance.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     route=json.loads((ROOT/'backend/data/routes.json').read_text())[0]
-    route.update(geometry=geometry,stops=json.loads((ROOT/'tools/route1-stops.json').read_text()),revision='route1-red-osm-v1',evidence='historical-corridor-reconstruction',
-                 notes='แนวอ้างอิงจากเส้นแดงของผู้ใช้ เชื่อมตามถนน OSM; ยังไม่ยืนยันทิศทางเดินรถหรือบริการปัจจุบัน')
+    route.update(geometry=geometry,stops=json.loads((ROOT/'tools/route1-stops.json').read_text()),revision='route1-red-osm-v2',evidence='historical-corridor-reconstruction',
+                 notes='แนวอ้างอิงจากเส้นแดงของผู้ใช้ เชื่อมตามถนน OSM และวนถนนวัชรสฤทธิ์ตามจุดที่เลือก; ยังไม่ยืนยันทิศทางเดินรถหรือบริการปัจจุบัน')
     (ROOT/'backend/data/routes.json').write_text(json.dumps([route],ensure_ascii=False,indent=2)+'\n')
     print('vertices',len(geometry),'length metres',round(sum(math.dist(project(*nodes[a]),project(*nodes[b])) for a,b,_,_ in edges)),
           'calibration px',round(report['calibrationMaxErrorPixels'],2))
